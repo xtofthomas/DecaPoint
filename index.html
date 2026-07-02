@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cotation combiné</title>
+<title>DecaScore</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&display=swap');
 
@@ -88,6 +88,18 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.03em;margi
 .preset-card:hover{border-color:var(--track);}
 .preset-card .pname{font-weight:600;font-size:14px;}
 .preset-card .pdesc{font-size:12px;color:var(--muted);margin-top:2px;}
+
+.choice-card{border:1px solid var(--line);border-radius:var(--radius);padding:14px;background:var(--chalk);flex:1 1 240px;min-width:230px;display:flex;flex-direction:column;gap:8px;}
+.choice-card.current{border-color:var(--track);}
+.choice-card .ccname{font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.choice-card .ccdesc{font-size:12px;color:var(--muted);line-height:1.5;}
+.choice-card .ccactions{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:4px;}
+.choice-card .ccactions button{font-size:11px;padding:6px 10px;}
+
+.default-panel{border:1.5px solid var(--yellow);border-radius:var(--radius);padding:14px 16px;margin-bottom:18px;background:#FBF3E0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+.default-panel .dtitle{font-weight:700;font-size:13px;color:#7A5A0E;display:flex;align-items:center;gap:6px;}
+.default-panel .ddesc{font-size:12px;color:#8A6B1E;margin-top:2px;}
+.default-panel .dactions{display:flex;gap:8px;}
 
 .addrow{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px;padding:14px;background:var(--chalk);border-radius:var(--radius);border:1px solid var(--line);}
 .field{display:flex;flex-direction:column;gap:4px;}
@@ -195,18 +207,21 @@ table.classement td.num,table.classement th.num{text-align:right;font-family:'Ro
 <div id="app">
   <header class="top">
     <div class="titlewrap">
-      <div class="bib">CE</div>
+      <div class="bib">9126</div>
       <div>
-        <h1>Cotation combiné</h1>
-        <input class="compname-input" id="compname-input" type="text" value="Ma compétition" />
+        <h1>Seuls les points comptent</h1>
+        <input class="compname-input" id="compname-input" type="text" value="Ma compétition" /> 
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-      <div class="savebadge" id="savebadge"><span class="dot"></span> Sauvegardé sur cet appareil</div>
+      <div class="savebadge" id="savebadge"><span class="dot"></span> Sauvegardé uniquement sur cet appareil</div>
       <div style="display:flex;gap:8px;">
-        <button class="ghost" data-action="export-json" style="padding:6px 12px;font-size:12px;">Exporter</button>
+        <button class="ghost" data-action="new-competition" style="padding:6px 12px;font-size:12px;">Nouvelle compétition</button>
+      <!-- <button class="ghost" data-action="export-json" style="padding:6px 12px;font-size:12px;">Exporter</button>
         <button class="ghost" data-action="import-json" style="padding:6px 12px;font-size:12px;">Importer</button>
+      
         <input type="file" id="import-file-input" accept="application/json" style="display:none;">
+     --> 
       </div>
     </div>
   </header>
@@ -256,8 +271,7 @@ var PRESETS = [
   {id:'decathlon_m', name:'Décathlon (Hommes)', desc:'10 épreuves sur 2 jours', keys:['M_100m','M_LJ','M_SP','M_HJ','M_400m','M_110mH','M_DT','M_PV','M_JT','M_1500m']},
   {id:'heptathlon_f', name:'Heptathlon (Femmes)', desc:'7 épreuves sur 2 jours', keys:['F_100mH','F_HJ','F_SP','F_200m','F_LJ','F_JT','F_800m']},
   {id:'hept_indoor_m', name:'Heptathlon en salle (Hommes)', desc:'7 épreuves — indoor', keys:['M_60m','M_LJ','M_SP','M_HJ','M_60mH','M_PV','M_1000m']},
-  {id:'penta_indoor_f', name:'Pentathlon en salle (Femmes)', desc:'5 épreuves — indoor', keys:['F_60mH','F_HJ','F_SP','F_LJ','F_800m']},
-  {id:'custom', name:'Configuration libre', desc:'Composez votre propre combiné (octathlon, etc.)', keys:[]}
+  {id:'penta_indoor_f', name:'Pentathlon en salle (Femmes)', desc:'5 épreuves — indoor', keys:['F_60mH','F_HJ','F_SP','F_LJ','F_800m']}
 ];
 
 /* ================= ETAT ================= */
@@ -269,6 +283,27 @@ var state = {
 };
 var openDetail = {};
 var saveTimer = null;
+var savedConfigs = [];
+var defaultConfigId = null;
+var draft = null;
+
+function cloneEvents(arr){
+  return (arr||[]).map(function(e){ return Object.assign({}, e); });
+}
+function uidCfg(){ return 'cfg'+Math.random().toString(36).slice(2,9); }
+
+function resolveConfig(id){
+  if(!id) return null;
+  if(id.indexOf('preset:')===0){
+    var pid = id.slice(7);
+    var p = PRESETS.filter(function(x){return x.id===pid;})[0];
+    if(!p) return null;
+    return {id:id, name:p.name, builtin:true, events:p.keys.map(function(k){ return Object.assign({}, DB[k], {custom:false}); })};
+  }
+  var c = savedConfigs.filter(function(x){return x.id===id;})[0];
+  if(!c) return null;
+  return {id:c.id, name:c.name, builtin:false, events:cloneEvents(c.events)};
+}
 
 /* ================= CALCULS ================= */
 function parsePerf(raw, type){
@@ -329,6 +364,9 @@ function athleteTotals(ath){
    et bascule automatiquement sur localStorage quand elle est hébergée
    ailleurs (GitHub Pages, serveur perso, fichier local, etc.) */
 var STORAGE_KEY = 'combine-state';
+var SAVED_CONFIGS_KEY = 'combine-saved-configs';
+var DEFAULT_REF_KEY = 'combine-default-config-ref';
+var LEGACY_DEFAULT_KEY = 'combine-default-events';
 var hasClaudeStorage = (typeof window!=='undefined' && window.storage && typeof window.storage.set==='function');
 
 function storageSet(key, value){
@@ -361,12 +399,39 @@ function scheduleSave(){
   }, 400);
 }
 function loadState(){
-  storageGet(STORAGE_KEY).then(function(res){
-    if(res && res.value){
+  Promise.all([
+    storageGet(SAVED_CONFIGS_KEY).catch(function(){return null;}),
+    storageGet(DEFAULT_REF_KEY).catch(function(){return null;}),
+    storageGet(LEGACY_DEFAULT_KEY).catch(function(){return null;}),
+    storageGet(STORAGE_KEY).catch(function(){return null;})
+  ]).then(function(results){
+    var savedRes = results[0], defRefRes = results[1], legacyRes = results[2], stateRes = results[3];
+    if(savedRes && savedRes.value){
+      try{ var arr = JSON.parse(savedRes.value); if(Array.isArray(arr)) savedConfigs = arr; }catch(e){}
+    }
+    if(defRefRes && defRefRes.value){
+      try{ var ref = JSON.parse(defRefRes.value); if(typeof ref==='string') defaultConfigId = ref; }catch(e){}
+    }
+    if((!savedConfigs || !savedConfigs.length) && legacyRes && legacyRes.value){
       try{
-        var parsed = JSON.parse(res.value);
+        var legacyArr = JSON.parse(legacyRes.value);
+        if(Array.isArray(legacyArr) && legacyArr.length){
+          var migrated = {id:uidCfg(), name:'Ma configuration', events:legacyArr};
+          savedConfigs = [migrated];
+          defaultConfigId = migrated.id;
+          storageSet(SAVED_CONFIGS_KEY, JSON.stringify(savedConfigs));
+          storageSet(DEFAULT_REF_KEY, JSON.stringify(defaultConfigId));
+        }
+      }catch(e){}
+    }
+    if(stateRes && stateRes.value){
+      try{
+        var parsed = JSON.parse(stateRes.value);
         if(parsed && typeof parsed==='object'){ state = Object.assign(state, parsed); }
       }catch(e){}
+    } else {
+      var def = resolveConfig(defaultConfigId);
+      if(def){ state.events = def.events; state.step = 1; }
     }
     render();
   }).catch(function(){ render(); });
@@ -394,7 +459,7 @@ function rerenderPreserveFocus(){
 /* ================= RENDER : STEPPER ================= */
 function renderStepper(){
   var labels = [
-    {n:1,t:'Configuration'},
+    {n:1,t:'Épreuve'},
     {n:2,t:'Athlètes & prévisions'},
     {n:3,t:'Direct'}
   ];
@@ -412,29 +477,73 @@ function renderStepper(){
   document.getElementById('stepper').innerHTML = html;
 }
 
-/* ================= RENDER : STEP 0 CONFIG ================= */
-function eventOptionsHtml(){
+/* ================= RENDER : ETAPE 0 CHOIX DE L'EPREUVE ================= */
+function eventOptionsHtml(list){
+  var arr = list || [];
   var html = '<optgroup label="Hommes">';
   MEN.forEach(function(e){
-    var already = state.events.some(function(x){return x.key===e.key;});
+    var already = arr.some(function(x){return x.key===e.key;});
     html += '<option value="'+e.key+'" '+(already?'disabled':'')+'>'+e.label+(already?' (déjà ajoutée)':'')+'</option>';
   });
   html += '</optgroup><optgroup label="Femmes">';
   WOMEN.forEach(function(e){
-    var already = state.events.some(function(x){return x.key===e.key;});
+    var already = arr.some(function(x){return x.key===e.key;});
     html += '<option value="'+e.key+'" '+(already?'disabled':'')+'>'+e.label+(already?' (déjà ajoutée)':'')+'</option>';
   });
   html += '</optgroup>';
   return html;
 }
 
-function renderConfig(){
-  var presetCards = PRESETS.map(function(p){
-    return '<div class="preset-card" data-action="apply-preset" data-preset="'+p.id+'">'+
-      '<div class="pname">'+p.name+'</div><div class="pdesc">'+p.desc+'</div></div>';
+function configCardHtml(cfg, isDefault){
+  var count = cfg.events.length;
+  var preview = cfg.events.map(function(e){return e.label;}).join(' · ');
+  var badge = isDefault ? '<span class="tag" style="background:#FBF3E0;color:#7A5A0E">★ Par défaut</span>' : '';
+  var extra = cfg.builtin ? '' : (
+    '<button class="ghost" data-action="open-workshop-edit" data-id="'+esc(cfg.id)+'">Modifier</button>'+
+    '<button class="ghost" data-action="delete-saved-config" data-id="'+esc(cfg.id)+'" style="color:var(--red)">Supprimer</button>'
+  );
+  return '<div class="choice-card">'+
+    '<div class="ccname">'+esc(cfg.name)+' '+badge+'</div>'+
+    '<div class="ccdesc">'+count+' épreuve'+(count>1?'s':'')+' — '+esc(preview)+'</div>'+
+    '<div class="ccactions">'+
+      '<button data-action="choose-config" data-id="'+esc(cfg.id)+'">Choisir</button>'+
+      '<button class="ghost" data-action="toggle-default" data-id="'+esc(cfg.id)+'">'+(isDefault?'☆ Retirer le défaut':'★ Définir par défaut')+'</button>'+
+      extra+
+    '</div></div>';
+}
+
+function renderChooseEvent(){
+  var builtinCards = PRESETS.map(function(p){
+    var cfg = {id:'preset:'+p.id, name:p.name, builtin:true, events:p.keys.map(function(k){return DB[k];})};
+    return configCardHtml(cfg, defaultConfigId===cfg.id);
+  }).join('');
+  var savedCards = savedConfigs.map(function(c){
+    return configCardHtml({id:c.id, name:c.name, builtin:false, events:c.events}, defaultConfigId===c.id);
   }).join('');
 
-  var rows = state.events.map(function(ev,i){
+  var currentNote = '';
+  if(state.events.length){
+    currentNote = '<div class="default-panel" style="border-color:var(--blue);background:#EAF2F3">'+
+      '<div><div class="dtitle" style="color:#1D4B54">Configuration actuelle de la compétition — '+state.events.length+' épreuve'+(state.events.length>1?'s':'')+'</div>'+
+      '<div class="ddesc" style="color:#3A6A73">'+esc(state.events.map(function(e){return e.label;}).join(' · '))+'</div></div>'+
+      '<div class="dactions"><button data-action="goto-step" data-step="1">Continuer avec cette configuration →</button></div>'+
+      '</div>';
+  }
+
+  var html =
+    '<section class="panel">'+
+      '<h2>1. Choix de l\'épreuve</h2>'+
+      '<p class="hint">Sélectionnez le combiné à disputer pour cette compétition. La composition détaillée des épreuves (ajout, ordre, coefficients personnalisés) se gère séparément, via « Nouvelle configuration » ou « Modifier ».</p>'+
+      currentNote+
+      '<div class="preset-row">'+builtinCards+savedCards+'</div>'+
+      '<button class="secondary" data-action="open-workshop-new">+ Nouvelle configuration personnalisée</button>'+
+    '</section>';
+  document.getElementById('view').innerHTML = html;
+}
+
+/* ================= RENDER : ATELIER DE CONFIGURATION (separe des etapes) ================= */
+function renderWorkshop(){
+  var rows = draft.events.map(function(ev,i){
     var typeLabel = ev.type==='time' ? 'Course' : (ev.type==='mark_cm' ? 'Saut (cm)' : 'Lancer (m)');
     return '<tr>'+
       '<td class="mono">'+(i+1)+'</td>'+
@@ -444,35 +553,38 @@ function renderConfig(){
       '<td class="mono" style="font-size:12px;color:var(--muted)">a='+ev.a+' b='+ev.b+' c='+ev.c+'</td>'+
       '<td><div class="rowactions">'+
         '<button class="iconbtn" data-action="move-event" data-dir="-1" data-idx="'+i+'" '+(i===0?'disabled':'')+' title="Monter">↑</button>'+
-        '<button class="iconbtn" data-action="move-event" data-dir="1" data-idx="'+i+'" '+(i===state.events.length-1?'disabled':'')+' title="Descendre">↓</button>'+
+        '<button class="iconbtn" data-action="move-event" data-dir="1" data-idx="'+i+'" '+(i===draft.events.length-1?'disabled':'')+' title="Descendre">↓</button>'+
         '<button class="iconbtn" data-action="remove-event" data-idx="'+i+'" title="Retirer">✕</button>'+
       '</div></td>'+
       '</tr>';
   }).join('');
 
-  var table = state.events.length ? (
+  var table = draft.events.length ? (
     '<table class="evlist"><thead><tr><th>#</th><th>Genre</th><th>Épreuve</th><th>Type</th><th>Coefficients</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
-  ) : '<div class="empty"><span class="ti">—</span>Aucune épreuve pour l\'instant. Choisissez un modèle ci-dessus ou ajoutez des épreuves une par une.</div>';
+  ) : '<div class="empty"><span class="ti">—</span>Aucune épreuve. Partez d\'un modèle ci-dessous ou ajoutez des épreuves une par une.</div>';
+
+  var quickStart = PRESETS.map(function(p){
+    return '<div class="preset-card" data-action="workshop-apply-preset" data-preset="'+p.id+'"><div class="pname">'+p.name+'</div><div class="pdesc">'+p.desc+'</div></div>';
+  }).join('');
 
   var html =
+    '<button class="ghost" data-action="workshop-cancel" style="margin-bottom:16px;font-size:12px;">← Retour au choix de l\'épreuve</button>'+
     '<section class="panel">'+
-      '<h2>1. Modèles</h2>'+
-      '<p class="hint">Choisissez un modèle officiel pour préremplir la liste, ou partez de « Configuration libre » pour composer votre propre combiné (octathlon, triathlon, format personnalisé...).</p>'+
-      '<div class="preset-row">'+presetCards+'</div>'+
-    '</section>'+
-    '<section class="panel">'+
-      '<h2>2. Épreuves retenues</h2>'+
-      '<p class="hint">L\'ordre du tableau est l\'ordre de déroulement de la compétition. Réorganisez avec les flèches.</p>'+
+      '<h2>Configurer une épreuve</h2>'+
+      '<p class="hint">Composez la liste des épreuves de ce combiné (octathlon, triathlon, format maison...). Une fois enregistrée, cette configuration apparaîtra parmi les choix disponibles, sans devoir être recomposée.</p>'+
+      '<div class="field" style="max-width:360px;margin-bottom:16px"><label>Nom de la configuration</label><input type="text" id="draft-name" value="'+esc(draft.name)+'" placeholder="ex : Octathlon club U17"/></div>'+
+      '<p class="hint" style="margin-bottom:10px">Partir d\'un modèle officiel (optionnel) :</p>'+
+      '<div class="preset-row">'+quickStart+'</div>'+
       table+
       '<div class="addrow" style="margin-top:16px">'+
         '<div class="field" style="flex:2;min-width:220px">'+
           '<label>Ajouter une épreuve du barème officiel</label>'+
-          '<select id="event-select">'+eventOptionsHtml()+'</select>'+
+          '<select id="event-select">'+eventOptionsHtml(draft.events)+'</select>'+
         '</div>'+
         '<button data-action="add-db-event">Ajouter</button>'+
       '</div>'+
       '<div class="customform">'+
-        '<p class="hint" style="margin-bottom:10px">Épreuve non listée (hammer, poids lourd, distance atypique...) ? Définissez ses propres coefficients de cotation a, b, c au format World Athletics : Course P = a·(b−T)^c (T en secondes) · Saut P = a·(M−b)^c (M en cm) · Lancer P = a·(D−b)^c (D en mètres).</p>'+
+        '<p class="hint" style="margin-bottom:10px">Épreuve non listée (marteau, poids lourd, distance atypique...) ? Définissez ses propres coefficients de cotation a, b, c au format World Athletics : Course P = a·(b−T)^c (T en secondes) · Saut P = a·(M−b)^c (M en cm) · Lancer P = a·(D−b)^c (D en mètres).</p>'+
         '<div class="addrow">'+
           '<div class="field" style="min-width:160px"><label>Nom</label><input type="text" id="custom-name" placeholder="ex : Marteau"/></div>'+
           '<div class="field"><label>Type</label><select id="custom-type"><option value="time">Course (temps)</option><option value="mark_cm">Saut (cm)</option><option value="mark_m">Lancer (m)</option></select></div>'+
@@ -484,7 +596,7 @@ function renderConfig(){
       '</div>'+
       '<div class="footbar">'+
         '<button class="ghost" data-action="clear-events">Vider la liste</button>'+
-        '<button data-action="goto-step" data-step="1" '+(state.events.length?'':'disabled')+'>Suivant : athlètes →</button>'+
+        '<button data-action="workshop-save" '+(draft.events.length?'':'disabled')+'>Enregistrer la configuration</button>'+
       '</div>'+
     '</section>';
   document.getElementById('view').innerHTML = html;
@@ -498,13 +610,13 @@ function renderAthletes(){
       var pts = computePoints(ev, ath.pb[ev.key]);
       return '<div class="pbcell">'+
         '<label>'+esc(ev.label)+'</label>'+
-        '<input type="text" id="pb__'+ath.id+'__'+ev.key+'" placeholder="'+placeholderFor(ev)+'" value="'+esc(ath.pb[ev.key]||'')+'" data-action="pb-input" data-athlete="'+ath.id+'" data-event="'+ev.key+'"/>'+
+        '<input type="text" id="pb__'+esc(ath.id)+'__'+esc(ev.key)+'" placeholder="'+placeholderFor(ev)+'" value="'+esc(ath.pb[ev.key]||'')+'" data-action="pb-input" data-athlete="'+esc(ath.id)+'" data-event="'+esc(ev.key)+'"/>'+
         '<div class="pts">'+(pts!==null ? fmtPts(pts)+' pts' : '')+'</div>'+
       '</div>';
     }).join('');
     return '<div class="athlete-card">'+
       '<div class="athlete-head"><span class="aname">'+esc(ath.name)+'</span>'+
-        '<button class="iconbtn" data-action="remove-athlete" data-athlete="'+ath.id+'" title="Retirer l\'athlète">✕</button>'+
+        '<button class="iconbtn" data-action="remove-athlete" data-athlete="'+esc(ath.id)+'" title="Retirer l\'athlète">✕</button>'+
       '</div>'+
       '<div class="pbgrid">'+cells+'</div>'+
       '<div class="predtotal"><span>Total prévision</span><span class="val">'+fmtPts(totals.pred)+' pts</span></div>'+
@@ -522,7 +634,7 @@ function renderAthletes(){
       '<div class="addathlete"><input type="text" id="new-athlete-name" placeholder="Nom de l\'athlète"/><button data-action="add-athlete">Ajouter l\'athlète</button></div>'+
       cards+
       '<div class="footbar">'+
-        '<button class="secondary" data-action="goto-step" data-step="0">← Configuration</button>'+
+        '<button class="secondary" data-action="goto-step" data-step="0">← Choix de l\'épreuve</button>'+
         '<button data-action="goto-step" data-step="2" '+(state.athletes.length?'':'disabled')+'>Démarrer le direct →</button>'+
       '</div>'+
     '</section>';
@@ -620,10 +732,15 @@ function renderLive(){
 /* ================= MASTER RENDER ================= */
 function render(){
   document.getElementById('compname-input').value = state.compName;
-  renderStepper();
-  if(state.step===0) renderConfig();
-  else if(state.step===1) renderAthletes();
-  else renderLive();
+  if(state.step==='config'){
+    document.getElementById('stepper').innerHTML = '';
+    renderWorkshop();
+  } else {
+    renderStepper();
+    if(state.step===0) renderChooseEvent();
+    else if(state.step===1) renderAthletes();
+    else renderLive();
+  }
 }
 
 /* ================= ACTIONS ================= */
@@ -638,20 +755,83 @@ document.addEventListener('click', function(e){
     state.step = step;
     render(); scheduleSave();
   }
-  else if(action==='apply-preset'){
-    var pid = t.getAttribute('data-preset');
-    var preset = PRESETS.filter(function(p){return p.id===pid;})[0];
-    if(preset){
-      state.events = preset.keys.map(function(k){ return Object.assign({}, DB[k], {custom:false}); });
-      render(); scheduleSave();
+  else if(action==='open-workshop-new'){
+    draft = {id:null, name:'', events:[]};
+    state.step = 'config';
+    render();
+  }
+  else if(action==='open-workshop-edit'){
+    var editId = t.getAttribute('data-id');
+    var cfg = savedConfigs.filter(function(c){return c.id===editId;})[0];
+    if(cfg){
+      draft = {id:cfg.id, name:cfg.name, events:cloneEvents(cfg.events)};
+      state.step = 'config';
+      render();
     }
+  }
+  else if(action==='workshop-cancel'){
+    draft = null;
+    state.step = 0;
+    render();
+  }
+  else if(action==='workshop-save'){
+    var nameInput = document.getElementById('draft-name');
+    var nm = (nameInput ? nameInput.value : (draft.name||'')).trim();
+    if(!nm){ alert('Merci de donner un nom à cette configuration.'); return; }
+    if(!draft.events.length){ alert('Ajoutez au moins une épreuve.'); return; }
+    draft.name = nm;
+    if(draft.id){
+      var existing = savedConfigs.filter(function(c){return c.id===draft.id;})[0];
+      if(existing){ existing.name = draft.name; existing.events = cloneEvents(draft.events); }
+    } else {
+      var newCfg = {id:uidCfg(), name:draft.name, events:cloneEvents(draft.events)};
+      savedConfigs.push(newCfg);
+      draft.id = newCfg.id;
+    }
+    storageSet(SAVED_CONFIGS_KEY, JSON.stringify(savedConfigs));
+    draft = null;
+    state.step = 0;
+    render();
+  }
+  else if(action==='workshop-apply-preset'){
+    var wpid = t.getAttribute('data-preset');
+    var wpreset = PRESETS.filter(function(p){return p.id===wpid;})[0];
+    if(wpreset){
+      if(draft.events.length && !confirm('Remplacer les épreuves actuelles par le modèle « '+wpreset.name+' » ?')) return;
+      draft.events = wpreset.keys.map(function(k){ return Object.assign({}, DB[k], {custom:false}); });
+      render();
+    }
+  }
+  else if(action==='choose-config'){
+    var chId = t.getAttribute('data-id');
+    var resolved = resolveConfig(chId);
+    if(!resolved) return;
+    if(state.athletes.length && !confirm('Changer la configuration d\'épreuves de la compétition en cours ?')) return;
+    state.events = resolved.events;
+    state.step = 1;
+    render(); scheduleSave();
+  }
+  else if(action==='toggle-default'){
+    var tdId = t.getAttribute('data-id');
+    defaultConfigId = (defaultConfigId===tdId) ? null : tdId;
+    storageSet(DEFAULT_REF_KEY, JSON.stringify(defaultConfigId));
+    render();
+  }
+  else if(action==='delete-saved-config'){
+    var delId = t.getAttribute('data-id');
+    if(!confirm('Supprimer définitivement cette configuration enregistrée ?')) return;
+    savedConfigs = savedConfigs.filter(function(c){return c.id!==delId;});
+    if(defaultConfigId===delId) defaultConfigId = null;
+    storageSet(SAVED_CONFIGS_KEY, JSON.stringify(savedConfigs));
+    storageSet(DEFAULT_REF_KEY, JSON.stringify(defaultConfigId));
+    render();
   }
   else if(action==='add-db-event'){
     var sel = document.getElementById('event-select');
     var key = sel.value;
-    if(key && DB[key] && !state.events.some(function(x){return x.key===key;})){
-      state.events.push(Object.assign({}, DB[key], {custom:false}));
-      render(); scheduleSave();
+    if(key && DB[key] && !draft.events.some(function(x){return x.key===key;})){
+      draft.events.push(Object.assign({}, DB[key], {custom:false}));
+      render();
     }
   }
   else if(action==='add-custom-event'){
@@ -664,32 +844,32 @@ document.addEventListener('click', function(e){
       alert('Merci de renseigner un nom et des coefficients a, b, c valides.');
       return;
     }
-    state.events.push({key:'custom_'+Date.now(), label:name, type:type, a:a, b:b, c:c, gender:'', custom:true});
+    draft.events.push({key:'custom_'+Date.now(), label:name, type:type, a:a, b:b, c:c, gender:'', custom:true});
     document.getElementById('custom-name').value='';
     document.getElementById('custom-a').value='';
     document.getElementById('custom-b').value='';
     document.getElementById('custom-c').value='';
-    render(); scheduleSave();
+    render();
   }
   else if(action==='move-event'){
     var idx = parseInt(t.getAttribute('data-idx'),10);
     var dir = parseInt(t.getAttribute('data-dir'),10);
     var j = idx+dir;
-    if(j<0 || j>=state.events.length) return;
-    var tmp = state.events[idx];
-    state.events[idx] = state.events[j];
-    state.events[j] = tmp;
-    render(); scheduleSave();
+    if(j<0 || j>=draft.events.length) return;
+    var tmp = draft.events[idx];
+    draft.events[idx] = draft.events[j];
+    draft.events[j] = tmp;
+    render();
   }
   else if(action==='remove-event'){
     var idx2 = parseInt(t.getAttribute('data-idx'),10);
-    state.events.splice(idx2,1);
-    render(); scheduleSave();
+    draft.events.splice(idx2,1);
+    render();
   }
   else if(action==='clear-events'){
-    if(state.events.length && !confirm('Vider la liste des épreuves ?')) return;
-    state.events = [];
-    render(); scheduleSave();
+    if(draft.events.length && !confirm('Vider la liste des épreuves ?')) return;
+    draft.events = [];
+    render();
   }
   else if(action==='add-athlete'){
     var inp = document.getElementById('new-athlete-name');
@@ -729,8 +909,20 @@ document.addEventListener('click', function(e){
   else if(action==='import-json'){
     document.getElementById('import-file-input').click();
   }
+  else if(action==='new-competition'){
+    var hasData = state.athletes.length>0;
+    if(hasData && !confirm('Démarrer une nouvelle compétition ? Les athlètes et performances actuels seront effacés.')) return;
+    var def = resolveConfig(defaultConfigId);
+    if(def){
+      state = {step:1, compName:'Ma compétition', events:def.events, athletes:[]};
+    } else {
+      state = {step:0, compName:'Ma compétition', events:[], athletes:[]};
+    }
+    openDetail = {};
+    render(); scheduleSave();
+  }
   else if(action==='reset-all'){
-    if(!confirm('Réinitialiser toute la compétition (épreuves, athlètes, performances) ? Cette action est irréversible.')) return;
+    if(!confirm('Réinitialiser toute la compétition (épreuves sélectionnées, athlètes, performances) ? Vos configurations enregistrées et votre modèle par défaut seront conservés. Cette action est irréversible.')) return;
     state = {step:0, compName:'Ma compétition', events:[], athletes:[]};
     openDetail = {};
     render(); scheduleSave();
@@ -755,6 +947,9 @@ document.addEventListener('input', function(e){
   else if(t.id==='compname-input'){
     state.compName = t.value;
     scheduleSave();
+  }
+  else if(t.id==='draft-name'){
+    if(draft) draft.name = t.value;
   }
 });
 
