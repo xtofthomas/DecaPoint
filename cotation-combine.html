@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotation combiné</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&display=swap');
+
+:root{
+  --track:#B7402F;
+  --track-dark:#8C2E22;
+  --cinder:#231F1B;
+  --chalk:#FAF7F1;
+  --paper:#FFFFFF;
+  --lane:#E7DFD0;
+  --yellow:#E2A824;
+  --blue:#2E6B78;
+  --green:#3F7A3C;
+  --red:#B23A2E;
+  --muted:#8A8377;
+  --line:#E2DACB;
+  --radius:10px;
+  --shadow:0 1px 2px rgba(35,31,27,.06);
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--chalk);
+  color:var(--cinder);
+  font-family:'Inter',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+#app{max-width:1180px;margin:0 auto;padding:0 20px 80px;}
+
+.mono{font-family:'Roboto Mono',monospace;font-variant-numeric:tabular-nums;}
+.display{font-family:'Bebas Neue',sans-serif;letter-spacing:.03em;}
+
+header.top{
+  padding:28px 0 18px;
+  border-bottom:3px solid var(--cinder);
+  display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;
+}
+header.top .titlewrap{display:flex;align-items:center;gap:14px;}
+.bib{
+  width:46px;height:46px;border-radius:50%;
+  background:var(--track);color:var(--chalk);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:20px;
+  border:2px solid var(--cinder);
+}
+h1{font-family:'Bebas Neue',sans-serif;font-size:34px;margin:0;letter-spacing:.04em;line-height:1;}
+.subtitle{color:var(--muted);font-size:13px;margin-top:4px;}
+.compname-input{
+  font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.03em;
+  border:none;background:transparent;border-bottom:2px dashed var(--line);
+  padding:2px 2px 4px;min-width:220px;color:var(--cinder);
+}
+.compname-input:focus{outline:none;border-bottom-color:var(--track);}
+
+.stepper{display:flex;gap:0;margin:18px 0 26px;border:1px solid var(--cinder);border-radius:var(--radius);overflow:hidden;}
+.step-btn{
+  flex:1;padding:11px 8px;text-align:center;background:var(--paper);border:none;border-right:1px solid var(--cinder);
+  cursor:pointer;font-family:'Inter';font-size:13px;font-weight:600;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.step-btn:last-child{border-right:none;}
+.step-btn .lane-no{
+  width:20px;height:20px;border-radius:50%;border:1.5px solid var(--muted);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-family:'Roboto Mono';
+}
+.step-btn.active{background:var(--cinder);color:var(--chalk);}
+.step-btn.active .lane-no{border-color:var(--yellow);color:var(--yellow);}
+.step-btn.done:not(.active){color:var(--track);}
+.step-btn.done:not(.active) .lane-no{border-color:var(--track);color:var(--track);}
+.step-btn:disabled{cursor:not-allowed;opacity:.55;}
+
+section.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin-bottom:20px;box-shadow:var(--shadow);}
+h2{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.03em;margin:0 0 4px;}
+.hint{color:var(--muted);font-size:13px;margin:0 0 16px;line-height:1.5;}
+
+.preset-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;}
+.preset-card{
+  border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;cursor:pointer;
+  background:var(--chalk);flex:1 1 200px;min-width:170px;
+}
+.preset-card:hover{border-color:var(--track);}
+.preset-card .pname{font-weight:600;font-size:14px;}
+.preset-card .pdesc{font-size:12px;color:var(--muted);margin-top:2px;}
+
+.addrow{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px;padding:14px;background:var(--chalk);border-radius:var(--radius);border:1px solid var(--line);}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;}
+select,input[type=text],input[type=number]{
+  font-family:'Inter';font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--cinder);
+}
+select:focus,input:focus{outline:none;border-color:var(--track);box-shadow:0 0 0 3px rgba(183,64,47,.12);}
+button{
+  font-family:'Inter';font-weight:600;font-size:13px;padding:9px 16px;border-radius:6px;border:1px solid var(--cinder);
+  background:var(--cinder);color:var(--chalk);cursor:pointer;
+}
+button.secondary{background:var(--paper);color:var(--cinder);}
+button.ghost{background:transparent;border-color:var(--line);color:var(--muted);}
+button.danger{background:var(--paper);color:var(--red);border-color:var(--red);}
+button:disabled{opacity:.4;cursor:not-allowed;}
+button:hover:not(:disabled){filter:brightness(1.06);}
+
+table.evlist{width:100%;border-collapse:collapse;font-size:14px;}
+table.evlist th{text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--cinder);}
+table.evlist td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle;}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;}
+.tag.M{background:#E6F1FB;color:#0C447C;}
+.tag.F{background:#FBEAF0;color:#72243E;}
+.iconbtn{background:transparent;border:1px solid var(--line);width:28px;height:28px;padding:0;border-radius:6px;color:var(--cinder);font-size:13px;}
+.iconbtn:hover{border-color:var(--cinder);}
+.rowactions{display:flex;gap:5px;}
+
+.footbar{display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}
+
+.athlete-card{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;overflow:hidden;}
+.athlete-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--chalk);border-bottom:1px solid var(--line);}
+.athlete-head .aname{font-weight:700;font-size:15px;}
+.pbgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:14px 16px;}
+.pbcell label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;}
+.pbcell input{width:100%;}
+.pbcell .pts{font-family:'Roboto Mono';font-size:12px;color:var(--track);margin-top:3px;min-height:14px;}
+.predtotal{padding:10px 16px;background:var(--cinder);color:var(--chalk);display:flex;justify-content:space-between;align-items:center;}
+.predtotal .val{font-family:'Bebas Neue';font-size:22px;color:var(--yellow);}
+
+.addathlete{display:flex;gap:10px;margin-bottom:18px;}
+.addathlete input{flex:1;}
+
+.pillrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+.pill{
+  border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600;background:var(--paper);
+  cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--cinder);
+}
+.pill .n{font-family:'Roboto Mono';font-size:11px;color:var(--muted);}
+.pill.active{background:var(--track);color:var(--chalk);border-color:var(--track);}
+.pill.active .n{color:#F4D9D2;}
+.pill.complete:not(.active){border-color:var(--green);}
+.pill.complete:not(.active) .n{color:var(--green);}
+
+.eventpanel{border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:22px;background:var(--chalk);}
+.eventpanel .etitle{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;}
+.eventpanel h3{font-family:'Bebas Neue';font-size:24px;margin:0;letter-spacing:.03em;}
+.eventpanel .eformula{font-size:11px;color:var(--muted);font-family:'Roboto Mono';}
+.eventpanel .placeholder-hint{font-size:12px;color:var(--muted);margin-bottom:14px;}
+
+.liverow{display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);}
+.liverow:last-child{border-bottom:none;}
+.liverow .lname{font-weight:600;font-size:14px;}
+.liverow .pbref{font-size:12px;color:var(--muted);margin-top:2px;}
+.liverow input{width:100%;}
+.liverow .pts-live{font-family:'Roboto Mono';font-weight:700;font-size:16px;text-align:right;min-width:64px;}
+.liverow .delta{font-family:'Roboto Mono';font-size:12px;text-align:right;min-width:64px;}
+.delta.pos{color:var(--green);}
+.delta.neg{color:var(--red);}
+.delta.zero{color:var(--muted);}
+
+table.classement{width:100%;border-collapse:collapse;font-size:14px;}
+table.classement th{text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:.04em;padding:8px;border-bottom:2px solid var(--cinder);}
+table.classement td{padding:9px 8px;border-bottom:1px solid var(--line);}
+table.classement td.num,table.classement th.num{text-align:right;font-family:'Roboto Mono';}
+.rank{
+  display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;
+  background:var(--cinder);color:var(--chalk);font-family:'Roboto Mono';font-size:12px;font-weight:700;
+}
+.rank.gold{background:var(--yellow);color:var(--cinder);}
+.total-live{font-family:'Bebas Neue';font-size:19px;}
+.detailbtn{background:transparent;border:none;color:var(--blue);font-size:12px;cursor:pointer;text-decoration:underline;padding:0;}
+.detail-panel{background:var(--chalk);border-radius:8px;padding:10px 14px;margin:6px 0 14px;font-size:12px;}
+.detail-panel table{width:100%;border-collapse:collapse;}
+.detail-panel th{text-align:left;color:var(--muted);font-weight:600;padding:4px 6px;}
+.detail-panel td{padding:4px 6px;border-top:1px solid var(--line);}
+
+.empty{padding:30px 20px;text-align:center;color:var(--muted);}
+.empty .ti{font-size:26px;display:block;margin-bottom:8px;}
+
+.savebadge{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+
+.customform{border-top:1px dashed var(--line);margin-top:16px;padding-top:16px;}
+.customform .addrow{margin-bottom:0;}
+
+@media (max-width:640px){
+  .liverow{grid-template-columns:1fr;gap:4px;}
+  .liverow .pts-live,.liverow .delta{text-align:left;}
+  h1{font-size:26px;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="titlewrap">
+      <div class="bib">CE</div>
+      <div>
+        <h1>Cotation combiné</h1>
+        <input class="compname-input" id="compname-input" type="text" value="Ma compétition" />
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div class="savebadge" id="savebadge"><span class="dot"></span> Sauvegardé sur cet appareil</div>
+      <div style="display:flex;gap:8px;">
+        <button class="ghost" data-action="export-json" style="padding:6px 12px;font-size:12px;">Exporter</button>
+        <button class="ghost" data-action="import-json" style="padding:6px 12px;font-size:12px;">Importer</button>
+        <input type="file" id="import-file-input" accept="application/json" style="display:none;">
+      </div>
+    </div>
+  </header>
+
+  <div class="stepper" id="stepper"></div>
+  <div id="view"></div>
+</div>
+
+<script>
+/* ================= DONNEES DE COTATION (World Athletics) ================= */
+var MEN = [
+  {key:'M_60m',   label:'60 m',        type:'time',    a:58.0150,  b:11.50,  c:1.81},
+  {key:'M_100m',  label:'100 m',       type:'time',    a:25.4347,  b:18.00,  c:1.81},
+  {key:'M_200m',  label:'200 m',       type:'time',    a:5.8425,   b:38.00,  c:1.81},
+  {key:'M_400m',  label:'400 m',       type:'time',    a:1.53775,  b:82.00,  c:1.81},
+  {key:'M_1000m', label:'1000 m',      type:'time',    a:0.08713,  b:305.50, c:1.85},
+  {key:'M_1500m', label:'1500 m',      type:'time',    a:0.03768,  b:480.00, c:1.85},
+  {key:'M_60mH',  label:'60 m haies',  type:'time',    a:20.5173,  b:15.50,  c:1.92},
+  {key:'M_110mH', label:'110 m haies', type:'time',    a:5.74352,  b:28.50,  c:1.92},
+  {key:'M_HJ',    label:'Hauteur',     type:'mark_cm', a:0.8465,   b:75.00,  c:1.42},
+  {key:'M_PV',    label:'Perche',      type:'mark_cm', a:0.2797,   b:100.00, c:1.35},
+  {key:'M_LJ',    label:'Longueur',    type:'mark_cm', a:0.14354,  b:220.00, c:1.40},
+  {key:'M_SP',    label:'Poids',       type:'mark_m',  a:51.39,    b:1.50,   c:1.05},
+  {key:'M_DT',    label:'Disque',      type:'mark_m',  a:12.91,    b:4.00,   c:1.10},
+  {key:'M_JT',    label:'Javelot',     type:'mark_m',  a:10.14,    b:7.00,   c:1.08}
+];
+var WOMEN = [
+  {key:'F_100m',  label:'100 m',       type:'time',    a:17.8570,  b:21.00,  c:1.81},
+  {key:'F_200m',  label:'200 m',       type:'time',    a:4.99087,  b:42.50,  c:1.81},
+  {key:'F_400m',  label:'400 m',       type:'time',    a:1.34285,  b:91.70,  c:1.81},
+  {key:'F_800m',  label:'800 m',       type:'time',    a:0.11193,  b:254.00, c:1.88},
+  {key:'F_1500m', label:'1500 m',      type:'time',    a:0.02883,  b:535.00, c:1.88},
+  {key:'F_60mH',  label:'60 m haies',  type:'time',    a:20.0479,  b:17.00,  c:1.835},
+  {key:'F_100mH', label:'100 m haies', type:'time',    a:9.23076,  b:26.70,  c:1.835},
+  {key:'F_HJ',    label:'Hauteur',     type:'mark_cm', a:1.84523,  b:75.00,  c:1.348},
+  {key:'F_PV',    label:'Perche',      type:'mark_cm', a:0.44125,  b:100.00, c:1.35},
+  {key:'F_LJ',    label:'Longueur',    type:'mark_cm', a:0.188807, b:210.00, c:1.41},
+  {key:'F_SP',    label:'Poids',       type:'mark_m',  a:56.0211,  b:1.50,   c:1.05},
+  {key:'F_DT',    label:'Disque',      type:'mark_m',  a:12.3311,  b:3.00,   c:1.10},
+  {key:'F_JT',    label:'Javelot',     type:'mark_m',  a:15.9803,  b:3.80,   c:1.04}
+];
+var DB = {};
+MEN.forEach(function(e){ DB[e.key] = Object.assign({gender:'M'}, e); });
+WOMEN.forEach(function(e){ DB[e.key] = Object.assign({gender:'F'}, e); });
+
+var PRESETS = [
+  {id:'decathlon_m', name:'Décathlon (Hommes)', desc:'10 épreuves sur 2 jours', keys:['M_100m','M_LJ','M_SP','M_HJ','M_400m','M_110mH','M_DT','M_PV','M_JT','M_1500m']},
+  {id:'heptathlon_f', name:'Heptathlon (Femmes)', desc:'7 épreuves sur 2 jours', keys:['F_100mH','F_HJ','F_SP','F_200m','F_LJ','F_JT','F_800m']},
+  {id:'hept_indoor_m', name:'Heptathlon en salle (Hommes)', desc:'7 épreuves — indoor', keys:['M_60m','M_LJ','M_SP','M_HJ','M_60mH','M_PV','M_1000m']},
+  {id:'penta_indoor_f', name:'Pentathlon en salle (Femmes)', desc:'5 épreuves — indoor', keys:['F_60mH','F_HJ','F_SP','F_LJ','F_800m']},
+  {id:'custom', name:'Configuration libre', desc:'Composez votre propre combiné (octathlon, etc.)', keys:[]}
+];
+
+/* ================= ETAT ================= */
+var state = {
+  step: 0,
+  compName: 'Ma compétition',
+  events: [],
+  athletes: []
+};
+var openDetail = {};
+var saveTimer = null;
+
+/* ================= CALCULS ================= */
+function parsePerf(raw, type){
+  if(raw===undefined || raw===null) return null;
+  raw = String(raw).trim().replace(',', '.');
+  if(raw==='') return null;
+  if(type==='time'){
+    if(raw.indexOf(':')>-1){
+      var parts = raw.split(':');
+      var mn = parseFloat(parts[0]);
+      var sc = parseFloat(parts[1]);
+      if(isNaN(mn)||isNaN(sc)) return null;
+      return mn*60+sc;
+    }
+    var v = parseFloat(raw);
+    return isNaN(v) ? null : v;
+  } else {
+    var v2 = parseFloat(raw);
+    if(isNaN(v2)) return null;
+    return type==='mark_cm' ? v2*100 : v2;
+  }
+}
+function computePoints(ev, raw){
+  var val = parsePerf(raw, ev.type);
+  if(val===null) return null;
+  var diff = ev.type==='time' ? (ev.b - val) : (val - ev.b);
+  if(diff<=0) return 0;
+  var pts = ev.a * Math.pow(diff, ev.c);
+  return Math.max(0, Math.floor(pts));
+}
+function fmtPts(p){ return (p===null||p===undefined) ? '—' : p.toLocaleString('fr-BE'); }
+function placeholderFor(ev){
+  if(ev.type==='time'){
+    return (ev.b>60) ? 'ex : 4:32.10' : 'ex : 11.34';
+  }
+  return 'ex : ' + (ev.type==='mark_cm' ? '2.05' : '15.20') + ' m';
+}
+function unitHint(ev){
+  if(ev.type==='time') return 'Temps en secondes (ss.cc) ou min:sec (m:ss.cc). Le meilleur temps rapporte le plus de points.';
+  if(ev.type==='mark_cm') return 'Performance en mètres (ex : 2.05). La plus grande performance rapporte le plus de points.';
+  return 'Performance en mètres (ex : 15.20). La plus grande performance rapporte le plus de points.';
+}
+
+function athleteTotals(ath){
+  var totalPred=0, totalLive=0, totalProj=0;
+  state.events.forEach(function(ev){
+    var pp = computePoints(ev, ath.pb[ev.key]);
+    var lp = computePoints(ev, ath.live[ev.key]);
+    totalPred += pp || 0;
+    totalLive += lp || 0;
+    totalProj += (lp!==null ? lp : (pp||0));
+  });
+  return {pred:totalPred, live:totalLive, proj:totalProj};
+}
+
+/* ================= PERSISTANCE ================= */
+/* Utilise window.storage quand l'app tourne dans Claude.ai (artefact),
+   et bascule automatiquement sur localStorage quand elle est hébergée
+   ailleurs (GitHub Pages, serveur perso, fichier local, etc.) */
+var STORAGE_KEY = 'combine-state';
+var hasClaudeStorage = (typeof window!=='undefined' && window.storage && typeof window.storage.set==='function');
+
+function storageSet(key, value){
+  if(hasClaudeStorage){ return window.storage.set(key, value, false); }
+  return new Promise(function(resolve, reject){
+    try{ localStorage.setItem(key, value); resolve(true); }
+    catch(e){ reject(e); }
+  });
+}
+function storageGet(key){
+  if(hasClaudeStorage){ return window.storage.get(key, false); }
+  return new Promise(function(resolve){
+    var v = localStorage.getItem(key);
+    resolve(v===null ? null : {value:v});
+  });
+}
+
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  var badge = document.getElementById('savebadge');
+  if(badge) badge.innerHTML = '<span class="dot" style="background:var(--yellow)"></span> Sauvegarde...';
+  saveTimer = setTimeout(function(){
+    storageSet(STORAGE_KEY, JSON.stringify(state)).then(function(){
+      var b = document.getElementById('savebadge');
+      if(b) b.innerHTML = '<span class="dot"></span> Sauvegardé automatiquement';
+    }).catch(function(){
+      var b = document.getElementById('savebadge');
+      if(b) b.innerHTML = '<span class="dot" style="background:var(--red)"></span> Sauvegarde impossible';
+    });
+  }, 400);
+}
+function loadState(){
+  storageGet(STORAGE_KEY).then(function(res){
+    if(res && res.value){
+      try{
+        var parsed = JSON.parse(res.value);
+        if(parsed && typeof parsed==='object'){ state = Object.assign(state, parsed); }
+      }catch(e){}
+    }
+    render();
+  }).catch(function(){ render(); });
+}
+
+/* ================= HELPERS UI ================= */
+function uid(){ return 'a'+Math.random().toString(36).slice(2,9); }
+function esc(s){ return String(s===undefined||s===null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function rerenderPreserveFocus(){
+  var active = document.activeElement;
+  var id = active && active.id;
+  var start = active && typeof active.selectionStart==='number' ? active.selectionStart : null;
+  var end = active && typeof active.selectionEnd==='number' ? active.selectionEnd : null;
+  render();
+  if(id){
+    var el = document.getElementById(id);
+    if(el){
+      el.focus();
+      if(start!==null && el.setSelectionRange){ try{ el.setSelectionRange(start,end); }catch(e){} }
+    }
+  }
+}
+
+/* ================= RENDER : STEPPER ================= */
+function renderStepper(){
+  var labels = [
+    {n:1,t:'Configuration'},
+    {n:2,t:'Athlètes & prévisions'},
+    {n:3,t:'Direct'}
+  ];
+  var canGo2 = state.events.length>0;
+  var canGo3 = state.events.length>0 && state.athletes.length>0;
+  var html = '';
+  labels.forEach(function(l,i){
+    var cls = 'step-btn';
+    if(state.step===i) cls+=' active';
+    else if(i<state.step) cls+=' done';
+    var dis = (i===1 && !canGo2) || (i===2 && !canGo3);
+    html += '<button class="'+cls+'" data-action="goto-step" data-step="'+i+'" '+(dis?'disabled':'')+'>'+
+      '<span class="lane-no">'+l.n+'</span> '+l.t+'</button>';
+  });
+  document.getElementById('stepper').innerHTML = html;
+}
+
+/* ================= RENDER : STEP 0 CONFIG ================= */
+function eventOptionsHtml(){
+  var html = '<optgroup label="Hommes">';
+  MEN.forEach(function(e){
+    var already = state.events.some(function(x){return x.key===e.key;});
+    html += '<option value="'+e.key+'" '+(already?'disabled':'')+'>'+e.label+(already?' (déjà ajoutée)':'')+'</option>';
+  });
+  html += '</optgroup><optgroup label="Femmes">';
+  WOMEN.forEach(function(e){
+    var already = state.events.some(function(x){return x.key===e.key;});
+    html += '<option value="'+e.key+'" '+(already?'disabled':'')+'>'+e.label+(already?' (déjà ajoutée)':'')+'</option>';
+  });
+  html += '</optgroup>';
+  return html;
+}
+
+function renderConfig(){
+  var presetCards = PRESETS.map(function(p){
+    return '<div class="preset-card" data-action="apply-preset" data-preset="'+p.id+'">'+
+      '<div class="pname">'+p.name+'</div><div class="pdesc">'+p.desc+'</div></div>';
+  }).join('');
+
+  var rows = state.events.map(function(ev,i){
+    var typeLabel = ev.type==='time' ? 'Course' : (ev.type==='mark_cm' ? 'Saut (cm)' : 'Lancer (m)');
+    return '<tr>'+
+      '<td class="mono">'+(i+1)+'</td>'+
+      '<td><span class="tag '+esc(ev.gender||'')+'">'+(ev.gender==='F'?'F':(ev.gender==='M'?'H':'—'))+'</span></td>'+
+      '<td>'+esc(ev.label)+(ev.custom?' <span style="color:var(--muted);font-size:11px">(perso)</span>':'')+'</td>'+
+      '<td style="color:var(--muted);font-size:12px">'+typeLabel+'</td>'+
+      '<td class="mono" style="font-size:12px;color:var(--muted)">a='+ev.a+' b='+ev.b+' c='+ev.c+'</td>'+
+      '<td><div class="rowactions">'+
+        '<button class="iconbtn" data-action="move-event" data-dir="-1" data-idx="'+i+'" '+(i===0?'disabled':'')+' title="Monter">↑</button>'+
+        '<button class="iconbtn" data-action="move-event" data-dir="1" data-idx="'+i+'" '+(i===state.events.length-1?'disabled':'')+' title="Descendre">↓</button>'+
+        '<button class="iconbtn" data-action="remove-event" data-idx="'+i+'" title="Retirer">✕</button>'+
+      '</div></td>'+
+      '</tr>';
+  }).join('');
+
+  var table = state.events.length ? (
+    '<table class="evlist"><thead><tr><th>#</th><th>Genre</th><th>Épreuve</th><th>Type</th><th>Coefficients</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+  ) : '<div class="empty"><span class="ti">—</span>Aucune épreuve pour l\'instant. Choisissez un modèle ci-dessus ou ajoutez des épreuves une par une.</div>';
+
+  var html =
+    '<section class="panel">'+
+      '<h2>1. Modèles</h2>'+
+      '<p class="hint">Choisissez un modèle officiel pour préremplir la liste, ou partez de « Configuration libre » pour composer votre propre combiné (octathlon, triathlon, format personnalisé...).</p>'+
+      '<div class="preset-row">'+presetCards+'</div>'+
+    '</section>'+
+    '<section class="panel">'+
+      '<h2>2. Épreuves retenues</h2>'+
+      '<p class="hint">L\'ordre du tableau est l\'ordre de déroulement de la compétition. Réorganisez avec les flèches.</p>'+
+      table+
+      '<div class="addrow" style="margin-top:16px">'+
+        '<div class="field" style="flex:2;min-width:220px">'+
+          '<label>Ajouter une épreuve du barème officiel</label>'+
+          '<select id="event-select">'+eventOptionsHtml()+'</select>'+
+        '</div>'+
+        '<button data-action="add-db-event">Ajouter</button>'+
+      '</div>'+
+      '<div class="customform">'+
+        '<p class="hint" style="margin-bottom:10px">Épreuve non listée (hammer, poids lourd, distance atypique...) ? Définissez ses propres coefficients de cotation a, b, c au format World Athletics : Course P = a·(b−T)^c (T en secondes) · Saut P = a·(M−b)^c (M en cm) · Lancer P = a·(D−b)^c (D en mètres).</p>'+
+        '<div class="addrow">'+
+          '<div class="field" style="min-width:160px"><label>Nom</label><input type="text" id="custom-name" placeholder="ex : Marteau"/></div>'+
+          '<div class="field"><label>Type</label><select id="custom-type"><option value="time">Course (temps)</option><option value="mark_cm">Saut (cm)</option><option value="mark_m">Lancer (m)</option></select></div>'+
+          '<div class="field" style="width:90px"><label>a</label><input type="number" step="any" id="custom-a"/></div>'+
+          '<div class="field" style="width:90px"><label>b</label><input type="number" step="any" id="custom-b"/></div>'+
+          '<div class="field" style="width:80px"><label>c</label><input type="number" step="any" id="custom-c"/></div>'+
+          '<button class="secondary" data-action="add-custom-event">Ajouter l\'épreuve</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="footbar">'+
+        '<button class="ghost" data-action="clear-events">Vider la liste</button>'+
+        '<button data-action="goto-step" data-step="1" '+(state.events.length?'':'disabled')+'>Suivant : athlètes →</button>'+
+      '</div>'+
+    '</section>';
+  document.getElementById('view').innerHTML = html;
+}
+
+/* ================= RENDER : STEP 1 ATHLETES / PREVISIONS ================= */
+function renderAthletes(){
+  var cards = state.athletes.map(function(ath){
+    var totals = athleteTotals(ath);
+    var cells = state.events.map(function(ev){
+      var pts = computePoints(ev, ath.pb[ev.key]);
+      return '<div class="pbcell">'+
+        '<label>'+esc(ev.label)+'</label>'+
+        '<input type="text" id="pb__'+ath.id+'__'+ev.key+'" placeholder="'+placeholderFor(ev)+'" value="'+esc(ath.pb[ev.key]||'')+'" data-action="pb-input" data-athlete="'+ath.id+'" data-event="'+ev.key+'"/>'+
+        '<div class="pts">'+(pts!==null ? fmtPts(pts)+' pts' : '')+'</div>'+
+      '</div>';
+    }).join('');
+    return '<div class="athlete-card">'+
+      '<div class="athlete-head"><span class="aname">'+esc(ath.name)+'</span>'+
+        '<button class="iconbtn" data-action="remove-athlete" data-athlete="'+ath.id+'" title="Retirer l\'athlète">✕</button>'+
+      '</div>'+
+      '<div class="pbgrid">'+cells+'</div>'+
+      '<div class="predtotal"><span>Total prévision</span><span class="val">'+fmtPts(totals.pred)+' pts</span></div>'+
+    '</div>';
+  }).join('');
+
+  if(!state.athletes.length){
+    cards = '<div class="empty"><span class="ti">—</span>Aucun athlète pour l\'instant. Ajoutez les concurrents ci-dessous.</div>';
+  }
+
+  var html =
+    '<section class="panel">'+
+      '<h2>Athlètes</h2>'+
+      '<p class="hint">Ajoutez chaque athlète, puis renseignez sa meilleure performance (record personnel) épreuve par épreuve : cela sert de base à la prévision de points, comparée en direct à la performance réelle.</p>'+
+      '<div class="addathlete"><input type="text" id="new-athlete-name" placeholder="Nom de l\'athlète"/><button data-action="add-athlete">Ajouter l\'athlète</button></div>'+
+      cards+
+      '<div class="footbar">'+
+        '<button class="secondary" data-action="goto-step" data-step="0">← Configuration</button>'+
+        '<button data-action="goto-step" data-step="2" '+(state.athletes.length?'':'disabled')+'>Démarrer le direct →</button>'+
+      '</div>'+
+    '</section>';
+  document.getElementById('view').innerHTML = html;
+}
+
+/* ================= RENDER : STEP 2 LIVE ================= */
+function eventComplete(ev){
+  return state.athletes.length>0 && state.athletes.every(function(a){ return a.live[ev.key]!==undefined && a.live[ev.key]!==''; });
+}
+
+function renderLive(){
+  if(state.currentEventIdx===undefined || state.currentEventIdx>=state.events.length) state.currentEventIdx=0;
+  var curIdx = state.currentEventIdx;
+  var curEv = state.events[curIdx];
+
+  var pills = state.events.map(function(ev,i){
+    var cls = 'pill'+(i===curIdx?' active':'')+(eventComplete(ev)?' complete':'');
+    return '<div class="'+cls+'" data-action="select-event" data-idx="'+i+'"><span class="n">'+(i+1)+'</span>'+esc(ev.label)+'</div>';
+  }).join('');
+
+  var rows = state.athletes.map(function(ath){
+    var pp = computePoints(curEv, ath.pb[curEv.key]);
+    var lp = computePoints(curEv, ath.live[curEv.key]);
+    var deltaHtml = '';
+    if(lp!==null && pp!==null){
+      var d = lp-pp;
+      var cls = d>0?'pos':(d<0?'neg':'zero');
+      deltaHtml = '<span class="delta '+cls+'">'+(d>0?'+':'')+d+'</span>';
+    }
+    return '<div class="liverow">'+
+      '<div><div class="lname">'+esc(ath.name)+'</div><div class="pbref">Prévision : '+(pp!==null?fmtPts(pp)+' pts ('+esc(ath.pb[curEv.key])+')':'—')+'</div></div>'+
+      '<input type="text" id="live__'+ath.id+'__'+curEv.key+'" placeholder="'+placeholderFor(curEv)+'" value="'+esc(ath.live[curEv.key]||'')+'" data-action="live-input" data-athlete="'+ath.id+'" data-event="'+curEv.key+'"/>'+
+      '<div class="pts-live">'+(lp!==null?fmtPts(lp):'')+'</div>'+
+      '<div>'+deltaHtml+'</div>'+
+    '</div>';
+  }).join('');
+
+  var eventPanel =
+    '<div class="eventpanel">'+
+      '<div class="etitle"><h3>'+(curIdx+1)+'. '+esc(curEv.label)+'</h3><span class="eformula">a='+curEv.a+'  b='+curEv.b+'  c='+curEv.c+'</span></div>'+
+      '<p class="placeholder-hint">'+unitHint(curEv)+'</p>'+
+      rows+
+    '</div>';
+
+  var ranked = state.athletes.map(function(a){
+    var t = athleteTotals(a);
+    return {ath:a, t:t};
+  }).sort(function(x,y){ return y.t.live - x.t.live; });
+
+  var classRows = ranked.map(function(r,i){
+    var d = r.t.proj - r.t.pred;
+    var dCls = d>0?'pos':(d<0?'neg':'zero');
+    var detailKey = r.ath.id;
+    var detailOpen = !!openDetail[detailKey];
+    var detailRows = state.events.map(function(ev){
+      var pp = computePoints(ev, r.ath.pb[ev.key]);
+      var lp = computePoints(ev, r.ath.live[ev.key]);
+      return '<tr><td>'+esc(ev.label)+'</td><td class="mono">'+(pp!==null?fmtPts(pp):'—')+'</td><td class="mono">'+(lp!==null?fmtPts(lp):'—')+'</td></tr>';
+    }).join('');
+    var detailHtml = detailOpen ? (
+      '<tr><td colspan="7"><div class="detail-panel"><table><thead><tr><th>Épreuve</th><th>Prévision</th><th>Réel</th></tr></thead><tbody>'+detailRows+'</tbody></table></div></td></tr>'
+    ) : '';
+    return '<tr>'+
+      '<td><span class="rank'+(i===0?' gold':'')+'">'+(i+1)+'</span></td>'+
+      '<td>'+esc(r.ath.name)+' <button class="detailbtn" data-action="toggle-detail" data-athlete="'+detailKey+'">'+(detailOpen?'masquer':'détail')+'</button></td>'+
+      '<td class="num total-live">'+fmtPts(r.t.live)+'</td>'+
+      '<td class="num mono">'+fmtPts(r.t.proj)+'</td>'+
+      '<td class="num mono" style="color:var(--muted)">'+fmtPts(r.t.pred)+'</td>'+
+      '<td class="num mono delta '+dCls+'">'+(d>0?'+':'')+d+'</td>'+
+      '</tr>'+detailHtml;
+  }).join('');
+
+  var classTable = state.athletes.length ? (
+    '<table class="classement"><thead><tr><th></th><th>Athlète</th><th class="num">Total réalisé</th><th class="num">Projection</th><th class="num">Prévision</th><th class="num">Écart</th></tr></thead><tbody>'+classRows+'</tbody></table>'
+  ) : '<div class="empty">Aucun athlète.</div>';
+
+  var html =
+    '<section class="panel">'+
+      '<h2>Direct — '+esc(state.compName)+'</h2>'+
+      '<p class="hint">Sélectionnez l\'épreuve en cours et saisissez les performances au fur et à mesure. Le classement, la projection et l\'écart par rapport à la prévision se mettent à jour instantanément.</p>'+
+      '<div class="pillrow">'+pills+'</div>'+
+      eventPanel+
+      '<h2 style="margin-top:6px">Classement</h2>'+
+      '<p class="hint">« Total réalisé » = points des épreuves déjà saisies. « Projection » = réalisé + prévision pour les épreuves restantes. « Écart » = projection − prévision initiale.</p>'+
+      classTable+
+      '<div class="footbar">'+
+        '<button class="secondary" data-action="goto-step" data-step="1">← Athlètes & prévisions</button>'+
+        '<button class="ghost" data-action="reset-all">Réinitialiser toute la compétition</button>'+
+      '</div>'+
+    '</section>';
+  document.getElementById('view').innerHTML = html;
+}
+
+/* ================= MASTER RENDER ================= */
+function render(){
+  document.getElementById('compname-input').value = state.compName;
+  renderStepper();
+  if(state.step===0) renderConfig();
+  else if(state.step===1) renderAthletes();
+  else renderLive();
+}
+
+/* ================= ACTIONS ================= */
+document.addEventListener('click', function(e){
+  var t = e.target.closest('[data-action]');
+  if(!t) return;
+  var action = t.getAttribute('data-action');
+
+  if(action==='goto-step'){
+    var step = parseInt(t.getAttribute('data-step'),10);
+    if(t.disabled) return;
+    state.step = step;
+    render(); scheduleSave();
+  }
+  else if(action==='apply-preset'){
+    var pid = t.getAttribute('data-preset');
+    var preset = PRESETS.filter(function(p){return p.id===pid;})[0];
+    if(preset){
+      state.events = preset.keys.map(function(k){ return Object.assign({}, DB[k], {custom:false}); });
+      render(); scheduleSave();
+    }
+  }
+  else if(action==='add-db-event'){
+    var sel = document.getElementById('event-select');
+    var key = sel.value;
+    if(key && DB[key] && !state.events.some(function(x){return x.key===key;})){
+      state.events.push(Object.assign({}, DB[key], {custom:false}));
+      render(); scheduleSave();
+    }
+  }
+  else if(action==='add-custom-event'){
+    var name = document.getElementById('custom-name').value.trim();
+    var type = document.getElementById('custom-type').value;
+    var a = parseFloat(document.getElementById('custom-a').value);
+    var b = parseFloat(document.getElementById('custom-b').value);
+    var c = parseFloat(document.getElementById('custom-c').value);
+    if(!name || isNaN(a) || isNaN(b) || isNaN(c)){
+      alert('Merci de renseigner un nom et des coefficients a, b, c valides.');
+      return;
+    }
+    state.events.push({key:'custom_'+Date.now(), label:name, type:type, a:a, b:b, c:c, gender:'', custom:true});
+    document.getElementById('custom-name').value='';
+    document.getElementById('custom-a').value='';
+    document.getElementById('custom-b').value='';
+    document.getElementById('custom-c').value='';
+    render(); scheduleSave();
+  }
+  else if(action==='move-event'){
+    var idx = parseInt(t.getAttribute('data-idx'),10);
+    var dir = parseInt(t.getAttribute('data-dir'),10);
+    var j = idx+dir;
+    if(j<0 || j>=state.events.length) return;
+    var tmp = state.events[idx];
+    state.events[idx] = state.events[j];
+    state.events[j] = tmp;
+    render(); scheduleSave();
+  }
+  else if(action==='remove-event'){
+    var idx2 = parseInt(t.getAttribute('data-idx'),10);
+    state.events.splice(idx2,1);
+    render(); scheduleSave();
+  }
+  else if(action==='clear-events'){
+    if(state.events.length && !confirm('Vider la liste des épreuves ?')) return;
+    state.events = [];
+    render(); scheduleSave();
+  }
+  else if(action==='add-athlete'){
+    var inp = document.getElementById('new-athlete-name');
+    var nm = inp.value.trim();
+    if(!nm) return;
+    state.athletes.push({id:uid(), name:nm, pb:{}, live:{}});
+    inp.value='';
+    render(); scheduleSave();
+  }
+  else if(action==='remove-athlete'){
+    var aid = t.getAttribute('data-athlete');
+    if(!confirm('Retirer cet athlète et toutes ses données ?')) return;
+    state.athletes = state.athletes.filter(function(a){return a.id!==aid;});
+    render(); scheduleSave();
+  }
+  else if(action==='select-event'){
+    state.currentEventIdx = parseInt(t.getAttribute('data-idx'),10);
+    render();
+  }
+  else if(action==='toggle-detail'){
+    var did = t.getAttribute('data-athlete');
+    openDetail[did] = !openDetail[did];
+    render();
+  }
+  else if(action==='export-json'){
+    var blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var safeName = (state.compName||'competition').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+    a.href = url;
+    a.download = 'cotation-'+(safeName||'competition')+'.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  else if(action==='import-json'){
+    document.getElementById('import-file-input').click();
+  }
+  else if(action==='reset-all'){
+    if(!confirm('Réinitialiser toute la compétition (épreuves, athlètes, performances) ? Cette action est irréversible.')) return;
+    state = {step:0, compName:'Ma compétition', events:[], athletes:[]};
+    openDetail = {};
+    render(); scheduleSave();
+  }
+});
+
+document.addEventListener('input', function(e){
+  var t = e.target;
+  var action = t.getAttribute && t.getAttribute('data-action');
+  if(action==='pb-input'){
+    var aid = t.getAttribute('data-athlete');
+    var ek = t.getAttribute('data-event');
+    var ath = state.athletes.filter(function(a){return a.id===aid;})[0];
+    if(ath){ ath.pb[ek] = t.value; rerenderPreserveFocus(); scheduleSave(); }
+  }
+  else if(action==='live-input'){
+    var aid2 = t.getAttribute('data-athlete');
+    var ek2 = t.getAttribute('data-event');
+    var ath2 = state.athletes.filter(function(a){return a.id===aid2;})[0];
+    if(ath2){ ath2.live[ek2] = t.value; rerenderPreserveFocus(); scheduleSave(); }
+  }
+  else if(t.id==='compname-input'){
+    state.compName = t.value;
+    scheduleSave();
+  }
+});
+
+document.addEventListener('change', function(e){
+  if(e.target && e.target.id==='import-file-input'){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt){
+      try{
+        var parsed = JSON.parse(evt.target.result);
+        if(parsed && typeof parsed==='object' && Array.isArray(parsed.events) && Array.isArray(parsed.athletes)){
+          state = Object.assign({step:0, compName:'Ma compétition', events:[], athletes:[]}, parsed);
+          openDetail = {};
+          render(); scheduleSave();
+        } else {
+          alert('Fichier invalide : ce n\'est pas un export de cotation combiné.');
+        }
+      }catch(err){
+        alert('Impossible de lire ce fichier JSON.');
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+});
+
+/* ================= INIT ================= */
+loadState();
+</script>
+</body>
+</html>
