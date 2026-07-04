@@ -240,6 +240,7 @@ var MEN = [
   {key:'M_1000m', label:'1000 m',      type:'time',    a:0.08713,  b:305.50, c:1.85},
   {key:'M_1500m', label:'1500 m',      type:'time',    a:0.03768,  b:480.00, c:1.85},
   {key:'M_60mH',  label:'60 m haies',  type:'time',    a:20.5173,  b:15.50,  c:1.92},
+  {key:'M_100mH', label:'100 m haies', type:'time',    a:9.23076,  b:26.70,  c:1.835},
   {key:'M_110mH', label:'110 m haies', type:'time',    a:5.74352,  b:28.50,  c:1.92},
   {key:'M_HJ',    label:'Hauteur',     type:'mark_cm', a:0.8465,   b:75.00,  c:1.42},
   {key:'M_PV',    label:'Perche',      type:'mark_cm', a:0.2797,   b:100.00, c:1.35},
@@ -270,8 +271,9 @@ WOMEN.forEach(function(e){ DB[e.key] = Object.assign({gender:'F'}, e); });
 var PRESETS = [
   {id:'decathlon_m', name:'Décathlon (Hommes)', desc:'10 épreuves sur 2 jours', keys:['M_100m','M_LJ','M_SP','M_HJ','M_400m','M_110mH','M_DT','M_PV','M_JT','M_1500m']},
   {id:'heptathlon_f', name:'Heptathlon (Femmes)', desc:'7 épreuves sur 2 jours', keys:['F_100mH','F_HJ','F_SP','F_200m','F_LJ','F_JT','F_800m']},
+  {id:'octathlon_m', name:'Octathlon (Cadets Hommes)', desc:'8 épreuves sur 2 jours', keys:['M_100m','M_LJ','M_SP','M_PV','M_100mH','M_HJ','M_JT','M_1000m']},
+
   {id:'hept_indoor_m', name:'Heptathlon en salle (Hommes)', desc:'7 épreuves — indoor', keys:['M_60m','M_LJ','M_SP','M_HJ','M_60mH','M_PV','M_1000m']},
-  {id:'octathlon_m', name:'Octathlon (Hommes)', desc:'8 épreuves sur 2 jours', keys:['M_100m','M_LJ','M_SP','M_PV','M_110mH','M_HJ','M_JT','M_1000m']},
   {id:'penta_indoor_f', name:'Pentathlon en salle (Femmes)', desc:'5 épreuves — indoor', keys:['F_60mH','F_HJ','F_SP','F_LJ','F_800m']}
 ];
 
